@@ -2,6 +2,7 @@
 
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/pluginwindow.h"
+#include "bakkesmod/plugin/PluginSettingsWindow.h"
 
 #include "NetcodeManager/NetcodeManager.h"
 
@@ -9,7 +10,7 @@
 constexpr auto plugin_version = stringify(VERSION_MAJOR) "." stringify(VERSION_MINOR) "." stringify(VERSION_PATCH) "." stringify(VERSION_BUILD);
 
 
-class InvisibleBall: public BakkesMod::Plugin::BakkesModPlugin/*, public BakkesMod::Plugin::PluginWindow*/
+class InvisibleBall: public BakkesMod::Plugin::BakkesModPlugin, public BakkesMod::Plugin::PluginSettingsWindow
 {
 private:
     std::shared_ptr<NetcodeManager> Netcode;
@@ -23,7 +24,20 @@ public:
 
 	ServerWrapper GetCurrentGameState();
 
-    void OnMessageReceived(const std::string& Message, PriWrapper Sender);
+	void hookEvents();
+	void unhookEvents();
+	void onTick();
+
+public:
+	struct VisibilityData {
+		std::deque<bool> invisDeque;
+	};
+
+	void OnMessageReceived(const std::string& Message, PriWrapper Sender);
+	void RenderSettings() override;
+	std::string GetPluginName() override;
+	void SetImGuiContext(uintptr_t ctx) override;
+	void updatePlayerVisibleStates(VisibilityData newData);
 
 	// Teleport ball example from CinderBlock's example plugin
 	// https://github.com/CinderBlocc/NetcodeManagerExample
