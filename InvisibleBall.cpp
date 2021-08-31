@@ -17,7 +17,7 @@ void InvisibleBall::onLoad()
 	Netcode = std::make_shared<NetcodeManager>(cvarManager, gameWrapper, exports, std::bind(&InvisibleBall::OnMessageReceived, this, _1, _2));
 	CVarWrapper log_level = cvarManager->getCvar("NETCODE_Log_Level");
 	log_level.setValue(1);
-
+	//gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) { render(canvas); });
 	cvarManager->registerCvar("invisible_ball_enabled", "0", "Enable the invisible ball plugin", true, true, 0, true, 1)
 		.addOnValueChanged([this](std::string, CVarWrapper cvar) {
 		if (cvar.getBoolValue()) {
@@ -30,7 +30,9 @@ void InvisibleBall::onLoad()
 	// cvar for if the host can see the ball (only applies if spectator)
 	cvarManager->registerCvar("host_is_spectator", "0", "Says if the host is spectating or not");
 	cvarManager->registerCvar("host_can_see_ball", "1", "Controls if the host can see the ball (only applies if the host is spectating)");
-
+	cvarManager->registerCvar("flash_off_time", "3", "Controls the time the ball spends invisible if flashing is enabled", true, true, 0.0f);
+	cvarManager->registerCvar("flash_on_time", "1", "Controls the time the ball spends visible if flashing is enabled", true, true, 0.0f);
+	cvarManager->registerCvar("flash_state", "0", "Controlls the state of the ball flash");
 	// logic for the host sending messages
 	// message strings look like 0:1,1,1;1:1,1,1;2:0,0,1;3:...8:1,0,1
 	// the number before the colon is the spectator shortcut
@@ -52,12 +54,17 @@ void InvisibleBall::onLoad()
 		catch (const nlohmann::detail::parse_error& e) {
 			return; // not much we can do here
 		}
-		std::deque<bool> playerInvisibilityStates;
+		std::deque<std::deque<bool>> playerInvisibilityStates;
 		visibilityJson["invisDeque"].get_to(playerInvisibilityStates);
 		std::string netcodeTransmission = "";
 		for (int i = 0; i < 9; i++) {
 			netcodeTransmission = netcodeTransmission + std::to_string(i + 0) + ":";
-			netcodeTransmission = netcodeTransmission + std::to_string(playerInvisibilityStates[i]);
+			for (int j = 0; j < 3; j++) {
+				netcodeTransmission = netcodeTransmission + std::to_string(playerInvisibilityStates[i][j]);
+				if (j < 2) {
+					netcodeTransmission = netcodeTransmission + ",";
+				}
+			}
 			if (i < 8) {
 				netcodeTransmission = netcodeTransmission + ";";
 			}
@@ -119,7 +126,7 @@ void InvisibleBall::OnMessageReceived(const std::string& Message, PriWrapper Sen
 
 		//now, go from things like "1:0,1,1" to nice values
 		// initialize the struct to all visible, not having all of these initialized can give some nasty crashes
-		VisibilityData playerInvisibilityStates{ {true, true, true, true, true, true, true, true, true, true, true} };
+		VisibilityData playerInvisibilityStates{ {{true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}} };
 		// this is a mutation of the above stackOverflow code to split each "1:0,0,1" on the colon
 		// and then convert it back to the struct
 		int specShortcut;
@@ -145,7 +152,15 @@ void InvisibleBall::OnMessageReceived(const std::string& Message, PriWrapper Sen
 				dataPart = token.substr(colonPos + 1);
 				if (dataPart.at(0) == '0') {
 					// it defaults to true, so we only have to check for false
-					playerInvisibilityStates.invisDeque[specShortcut] = false;
+					playerInvisibilityStates.invisDeque[specShortcut][0] = false;
+				}
+				if (dataPart.at(2) == '0') {
+					// it defaults to true, so we only have to check for false
+					playerInvisibilityStates.invisDeque[specShortcut][1] = false;
+				}
+				if (dataPart.at(4) == '0') {
+					// it defaults to true, so we only have to check for false
+					playerInvisibilityStates.invisDeque[specShortcut][2] = false;
 				}
 			}
 		}
@@ -218,9 +233,6 @@ void InvisibleBall::onTick() {
 
 	ArrayWrapper<PriWrapper> PRIs = sw.GetPRIs();
 	cvarManager->getCvar("host_is_spectator").setValue(playerCar.IsSpectator() || teamNum == 255);
-	if (playerCar.IsSpectator() || teamNum == 255) {
-		cvarManager->log("Host is spectating, cvar is " + std::to_string(cvarManager->getCvar("host_is_spectator").getBoolValue()));
-	}
 	if (gameWrapper->IsInOnlineGame()) {
 		// we are a client and should not let our users control the game
 		// make the GUI show nothing but the enabled checkbox
@@ -263,7 +275,7 @@ void InvisibleBall::onTick() {
 	catch (const nlohmann::detail::parse_error& e) {
 		return; // not much we can do here
 	}
-	std::deque<bool> playerInvisibilityStates;
+	std::deque<std::deque<bool>> playerInvisibilityStates;
 	visibilityJson["invisDeque"].get_to(playerInvisibilityStates);
 	if (playerInvisibilityStates.size() < 9) {
 		cvarManager->log("playerInvisibilityStates is not populated!");
@@ -291,7 +303,6 @@ void InvisibleBall::onTick() {
 			//cvarManager->log("Usr Team = " + std::to_string(teamNum));
 			//cvarManager->log("Car Team = " + std::to_string(car.GetTeamNum2()));
 			int index = pri.GetSpectatorShortcut();
-			bool playerBool = playerInvisibilityStates.at(index);
 
 			//cvarManager->log("Car " + car.GetOwnerName() + " is " + (playerBool[0] ? "visible" : "invisible") + " to teammates");
 			// </nullchecks>
@@ -309,12 +320,24 @@ void InvisibleBall::onTick() {
 				continue;
 			}*/
 			if (playerCar.GetSpectatorShortcut() == pri.GetSpectatorShortcut()) {
-				// we are this car's teammate, and should obey index 0
-				if (playerBool) {
+				// we are this car
+				if (playerInvisibilityStates[index][0]) {
 					ball.SetHidden2(0);
 				}
 				else {
 					ball.SetHidden2(1);
+					if (playerInvisibilityStates[index][1]) {
+						Vector ballLocation = ball.GetLocation();
+						CameraWrapper camera = gameWrapper->GetCamera();
+
+						Rotator camRotation = camera.GetRotation();
+						cvarManager->log("Current yaw: " + std::to_string(camRotation.Yaw));
+						cvarManager->log("Current pitch: " + std::to_string(camRotation.Pitch));
+
+						camera.SetRotation(Rotator(0, 0, camRotation.Roll));
+						camera.UpdateFOV();
+						camera.UpdateCameraState();
+					}
 				}
 				continue;
 			}

@@ -30,7 +30,7 @@ public:
 
 public:
 	struct VisibilityData {
-		std::deque<bool> invisDeque;
+		std::deque<std::deque<bool>> invisDeque;
 	};
 
 	void OnMessageReceived(const std::string& Message, PriWrapper Sender);
@@ -38,6 +38,7 @@ public:
 	std::string GetPluginName() override;
 	void SetImGuiContext(uintptr_t ctx) override;
 	void updatePlayerVisibleStates(VisibilityData newData);
+	//void render(CanvasWrapper canvas);
 
 	// Teleport ball example from CinderBlock's example plugin
 	// https://github.com/CinderBlocc/NetcodeManagerExample

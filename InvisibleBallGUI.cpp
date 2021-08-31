@@ -97,11 +97,35 @@ void InvisibleBall::RenderSettings() {
 		}
 	}
 	// an array to keep track of player states
-	static VisibilityData playerInvisibilityStates{ {true, true, true, true, true, true, true, true, true} };
+	static VisibilityData playerInvisibilityStates{ {{true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}} };
+	ImGui::TextUnformatted("Ball Flash Controls");
+	CVarWrapper flashOffTimeCvar = cvarManager->getCvar("flash_off_time");
+	if (flashOffTimeCvar) {
+		float flashOffTime = flashOffTimeCvar.getFloatValue();
+		if (ImGui::SliderFloat("Ball Off Time", &flashOffTime, 0.0, 20.0)) {
+			flashOffTimeCvar.setValue(flashOffTime);
+		}
+		if (ImGui::IsItemHovered()) {
+			std::string hoverText = "flashOffTime is " + std::to_string(flashOffTime);
+			ImGui::SetTooltip(hoverText.c_str());
+		}
+	}
+	CVarWrapper flashOnTimeCvar = cvarManager->getCvar("flash_on_time");
+	if (flashOnTimeCvar) {
+		float flashOnTime = flashOnTimeCvar.getFloatValue();
+		if (ImGui::SliderFloat("Ball Off Time", &flashOnTime, 0.0, 20.0)) {
+			flashOnTimeCvar.setValue(flashOnTime);
+		}
+		if (ImGui::IsItemHovered()) {
+			std::string hoverText = "flashOffTime is " + std::to_string(flashOnTime);
+			ImGui::SetTooltip(hoverText.c_str());
+		}
+	}
+	ImGui::TextUnformatted("Ball Visibility Controls");
 	CVarWrapper hostIsSpectating = cvarManager->getCvar("host_is_spectator");
 	// taking advantage of short-circuit operators here:
 	// if hostIsSpectating is not null AND hostIsSpectating
-	if (!hostIsSpectating && hostIsSpectating.getBoolValue()) {
+	if (hostIsSpectating && hostIsSpectating.getBoolValue()) {
 		CVarWrapper hostCanSeeBall = cvarManager->getCvar("host_can_see_ball");
 		if (!hostCanSeeBall) {
 			ImGui::TextUnformatted("Something has gone wrong and you are unable to set whether the host can see the ball.");
@@ -109,7 +133,7 @@ void InvisibleBall::RenderSettings() {
 		else {
 			bool hostCanSeeBallBool = hostCanSeeBall.getBoolValue();
 			if (ImGui::Checkbox("Host (you) can see ball", &hostCanSeeBallBool)) {
-				enableCvar.setValue(hostCanSeeBallBool);
+				hostCanSeeBall.setValue(hostCanSeeBallBool);
 			}
 		}
 	}
@@ -121,7 +145,13 @@ void InvisibleBall::RenderSettings() {
 			continue;
 		}
 		if (ImGui::TreeNode(playerName.c_str())) {
-			if (ImGui::Checkbox("Can See Ball", &playerInvisibilityStates.invisDeque[i])) {
+			if (ImGui::Checkbox("Can See Ball", &playerInvisibilityStates.invisDeque[i][0])) {
+				updatePlayerVisibleStates(playerInvisibilityStates);
+			}
+			if (ImGui::Checkbox("Has Arrow To Ball", &playerInvisibilityStates.invisDeque[i][1])) {
+				updatePlayerVisibleStates(playerInvisibilityStates);
+			}
+			if (ImGui::Checkbox("Ball Is Flashing", &playerInvisibilityStates.invisDeque[i][2])) {
 				updatePlayerVisibleStates(playerInvisibilityStates);
 			}
 			ImGui::TreePop();
