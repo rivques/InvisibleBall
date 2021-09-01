@@ -38,7 +38,7 @@ public:
 	std::string GetPluginName() override;
 	void SetImGuiContext(uintptr_t ctx) override;
 	void updatePlayerVisibleStates(VisibilityData newData);
-	//void render(CanvasWrapper canvas);
+	void render(CanvasWrapper canvas);
 
 	// Teleport ball example from CinderBlock's example plugin
 	// https://github.com/CinderBlocc/NetcodeManagerExample

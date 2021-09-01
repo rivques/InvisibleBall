@@ -17,7 +17,7 @@ void InvisibleBall::onLoad()
 	Netcode = std::make_shared<NetcodeManager>(cvarManager, gameWrapper, exports, std::bind(&InvisibleBall::OnMessageReceived, this, _1, _2));
 	CVarWrapper log_level = cvarManager->getCvar("NETCODE_Log_Level");
 	log_level.setValue(1);
-	//gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) { render(canvas); });
+	gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) { render(canvas); });
 	cvarManager->registerCvar("invisible_ball_enabled", "0", "Enable the invisible ball plugin", true, true, 0, true, 1)
 		.addOnValueChanged([this](std::string, CVarWrapper cvar) {
 		if (cvar.getBoolValue()) {
@@ -326,17 +326,18 @@ void InvisibleBall::onTick() {
 				}
 				else {
 					ball.SetHidden2(1);
-					if (playerInvisibilityStates[index][1]) {
+					if (false && playerInvisibilityStates[index][1]) {
 						Vector ballLocation = ball.GetLocation();
-						CameraWrapper camera = gameWrapper->GetCamera();
+						CarWrapper playerCar = pri.GetCar();
 
-						Rotator camRotation = camera.GetRotation();
-						cvarManager->log("Current yaw: " + std::to_string(camRotation.Yaw));
-						cvarManager->log("Current pitch: " + std::to_string(camRotation.Pitch));
+						if(car){
+							Vector carLocation = playerCar.GetLocation();
+							Vector carToBall = ballLocation - carLocation;
 
-						camera.SetRotation(Rotator(0, 0, camRotation.Roll));
-						camera.UpdateFOV();
-						camera.UpdateCameraState();
+
+						} else {
+							cvarManager->log("Null car when trying to draw arrow!");
+						}
 					}
 				}
 				continue;
@@ -353,4 +354,24 @@ void InvisibleBall::onTick() {
 			}*/
 		}
 	}
+}
+
+void render(CanvasWrapper canvas){
+	ServerWrapper sw = GetCurrentGameState();
+	
+	BallWrapper ball = sw.GetBall();
+	if(!ball) return;
+
+	CarWrapper playerCar = gameWrapper->GetLocalCar();
+	if(!playerCar) return;
+
+	Vector ballLocation = ball.GetLocation();
+	Vector carLocation = playerCar.GetLocation();
+
+	Vector carToBall = ballLocation - carLocation;
+
+	canvas.SetColor(LinearColor{0, 0, 1, 1});
+
+
+	canvas.DrawLine(canvas.Project(carLocation), canvas.Project(carLocation+(carToBall.getNormalized()*300)), 3);
 }
