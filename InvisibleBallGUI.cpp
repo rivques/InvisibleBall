@@ -97,7 +97,7 @@ void InvisibleBall::RenderSettings() {
 		}
 	}
 	// an array to keep track of player states
-	static VisibilityData playerInvisibilityStates{ {{true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}, {true, true, true}} };
+	static VisibilityData playerInvisibilityStates{ {{true, false, false}, {true, false, false}, {true, false, false}, {true, false, false}, {true, false, false}, {true, false, false}, {true, false, false}, {true, false, false}, {true, false, false}} };
 	ImGui::TextUnformatted("Ball Flash Controls");
 	CVarWrapper flashOffTimeCvar = cvarManager->getCvar("flash_off_time");
 	if (flashOffTimeCvar) {
@@ -113,11 +113,11 @@ void InvisibleBall::RenderSettings() {
 	CVarWrapper flashOnTimeCvar = cvarManager->getCvar("flash_on_time");
 	if (flashOnTimeCvar) {
 		float flashOnTime = flashOnTimeCvar.getFloatValue();
-		if (ImGui::SliderFloat("Ball Off Time", &flashOnTime, 0.0, 20.0)) {
+		if (ImGui::SliderFloat("Ball On Time", &flashOnTime, 0.0, 20.0)) {
 			flashOnTimeCvar.setValue(flashOnTime);
 		}
 		if (ImGui::IsItemHovered()) {
-			std::string hoverText = "flashOffTime is " + std::to_string(flashOnTime);
+			std::string hoverText = "flashOnTime is " + std::to_string(flashOnTime);
 			ImGui::SetTooltip(hoverText.c_str());
 		}
 	}
